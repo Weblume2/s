@@ -1,0 +1,666 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Ember & Oak Coffee Co. — Slow Coffee. Warm Souls.</title>
+  <meta name="description" content="Ember & Oak Coffee Co. — a luxury coffee house. Black & gold design, cinematic layout, animated coffee-themed moving background. Mobile-optimized." />
+  <style>
+    /* ---------- Base / Reset ---------- */
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html,body { height: 100%; }
+    body {
+      font-family: Georgia, serif;
+      background: #000;
+      color: #f5f5f5;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      line-height: 1.8;
+      overflow-x: hidden;
+      -webkit-font-kerning: normal;
+    }
+
+    /* ---------- Background container ---------- */
+    .bg-wrap {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+      background:
+        radial-gradient(1200px 600px at 10% 20%, rgba(212,175,55,0.03), transparent 8%),
+        radial-gradient(900px 400px at 90% 80%, rgba(212,175,55,0.02), transparent 6%),
+        linear-gradient(180deg, rgba(0,0,0,0.85), rgba(0,0,0,0.95));
+    }
+
+    /* coffee image layer (parallax) - responsive images via media queries */
+    .bg-image {
+      position:absolute;
+      inset:0;
+      background-image:
+        linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.55)),
+        url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=1600&auto=format&fit=crop&ixlib=rb-4.0.3&s=0f6b2f9b2b9b6b8f9a1b2c3d4e5f6a7b');
+      background-size: cover;
+      background-position: center;
+      transform-origin: center;
+      filter: grayscale(10%) contrast(0.95) brightness(0.45);
+      will-change: transform;
+      opacity: 0.7;
+    }
+
+    /* mobile background image (smaller file) */
+    @media (max-width: 720px) {
+      .bg-image {
+        background-image:
+          linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.55)),
+          url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=800&auto=format&fit=crop&ixlib=rb-4.0.3&s=0f6b2f9b2b9b6b8f9a1b2c3d4e5f6a7b');
+        opacity: 0.75;
+        filter: grayscale(6%) contrast(0.95) brightness(0.5);
+      }
+    }
+
+    /* subtle steam overlay */
+    .steam-overlay {
+      position:absolute;
+      inset:0;
+      background:
+        radial-gradient(600px 200px at 50% 10%, rgba(255,255,255,0.04), transparent 20%),
+        radial-gradient(500px 180px at 20% 30%, rgba(255,255,255,0.02), transparent 18%);
+      mix-blend-mode: screen;
+      pointer-events: none;
+      animation: steamShift 12s linear infinite;
+      opacity: 0.9;
+    }
+    @keyframes steamShift {
+      0% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-18px) scale(1.02); }
+      100% { transform: translateY(0) scale(1); }
+    }
+
+    /* canvas sits above image for particles */
+    canvas#particles {
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      display:block;
+    }
+
+    /* ---------- Page content (above background) ---------- */
+    .page {
+      position: relative;
+      z-index: 10;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---------- Header (responsive with hamburger) ---------- */
+    header {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding: 1rem 1.2rem;
+      border-bottom: 1px solid rgba(212,175,55,0.12);
+      backdrop-filter: blur(4px);
+      background: linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.05));
+      position: sticky;
+      top: 0;
+    }
+    .logo { color:#d4af37; font-weight:700; font-size:1.4rem; letter-spacing:2px; }
+    nav { display:flex; align-items:center; gap:1rem; }
+    nav ul { list-style:none; display:flex; gap:1.2rem; align-items:center; }
+    nav a { color:#f5f5f5; text-decoration:none; font-weight:500; transition: color .25s, transform .25s; font-size:0.95rem; }
+    nav a:hover { color:#d4af37; transform: translateY(-2px); }
+
+    .cta-btn {
+      background:#d4af37; color:#000; padding:0.5rem 1rem; border-radius:6px; font-weight:700;
+      text-decoration:none; transition: transform .18s, box-shadow .18s; font-size:0.95rem;
+    }
+    .cta-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(212,175,55,0.18); }
+
+    /* hamburger for small screens */
+    .hamburger {
+      display:none;
+      width:44px; height:44px; border-radius:8px; background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.03); align-items:center; justify-content:center; cursor:pointer;
+    }
+    .hamburger span {
+      display:block; width:18px; height:2px; background:#f5f5f5; position:relative;
+    }
+    .hamburger span::before, .hamburger span::after {
+      content:""; position:absolute; left:0; width:18px; height:2px; background:#f5f5f5;
+    }
+    .hamburger span::before { top:-6px; }
+    .hamburger span::after { top:6px; }
+
+    /* mobile nav overlay */
+    .mobile-nav {
+      position: fixed; inset: 0; z-index: 60; display:none; align-items:center; justify-content:center;
+      background: rgba(0,0,0,0.85); backdrop-filter: blur(6px);
+      flex-direction: column; gap: 1.6rem;
+    }
+    .mobile-nav a { color:#f5f5f5; font-size:1.4rem; text-decoration:none; }
+
+    /* ---------- Hero ---------- */
+    .hero {
+      padding: 8rem 1.2rem 4rem;
+      text-align:center;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:1rem;
+    }
+    .hero h1 {
+      color:#d4af37;
+      font-size: clamp(1.8rem, 6vw, 3.2rem);
+      letter-spacing: 1px;
+      max-width: 1100px;
+      line-height: 1.02;
+      text-shadow: 0 6px 30px rgba(0,0,0,0.6);
+    }
+    .hero p {
+      color: rgba(245,245,245,0.95);
+      font-size: clamp(0.95rem, 3.2vw, 1.2rem);
+      max-width: 900px;
+      margin: 0 auto;
+      opacity: 0.95;
+    }
+    .hero .actions { margin-top: 1.2rem; display:flex; gap:0.8rem; flex-wrap:wrap; justify-content:center; }
+
+    .btn-primary, .btn-secondary {
+      display:inline-block; padding:0.8rem 1.4rem; border-radius:6px; text-decoration:none; font-weight:700; font-size:0.95rem;
+      transition:all .22s;
+    }
+    .btn-primary { background:#d4af37; color:#000; }
+    .btn-primary:hover { background:#b8860b; box-shadow:0 8px 30px rgba(212,175,55,0.12); transform: translateY(-3px); }
+    .btn-secondary { border:2px solid #d4af37; color:#d4af37; background:transparent; padding:0.7rem 1.2rem; }
+    .btn-secondary:hover { background:#d4af37; color:#000; }
+
+    /* ---------- Sections ---------- */
+    section { padding: 3.2rem 1.2rem; max-width:1000px; margin: 0 auto; }
+    h2 { color:#d4af37; font-size:1.6rem; text-align:center; margin-bottom:1rem; }
+
+    .menu-grid {
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .menu-item {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid rgba(212,175,55,0.06);
+      padding: 1rem;
+      border-radius: 10px;
+      transition: transform .22s, box-shadow .22s, border-color .22s;
+      backdrop-filter: blur(6px);
+    }
+    .menu-item h3 { color:#d4af37; margin-bottom:0.4rem; font-size:1rem; }
+    .menu-item p { color: rgba(245,245,245,0.9); font-size:0.95rem; }
+
+    .menu-item:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 14px 40px rgba(212,175,55,0.12);
+      border-color: rgba(212,175,55,0.28);
+    }
+
+    /* PDF card (luxury product card) */
+    .pdf-card {
+      margin: 1.6rem auto 0;
+      display:flex;
+      align-items:center;
+      gap:0.9rem;
+      max-width:520px;
+      padding:0.9rem 1rem;
+      border-radius:12px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid rgba(212,175,55,0.06);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      transition: transform .22s, box-shadow .22s;
+    }
+    .pdf-card .pdf-icon {
+      width:52px; height:52px; border-radius:8px;
+      background: linear-gradient(180deg,#d4af37,#b8860b);
+      display:flex; align-items:center; justify-content:center; color:#000; font-weight:700;
+      box-shadow: 0 6px 18px rgba(212,175,55,0.18);
+      font-size:0.95rem;
+    }
+    .pdf-card .pdf-meta { color:#f5f5f5; font-size:0.95rem; }
+    .pdf-card .pdf-meta .cta {
+      display:inline-block; margin-top:6px; padding:8px 12px; border-radius:8px;
+      background:#000; color:#d4af37; border:1px solid rgba(212,175,55,0.18); text-decoration:none; font-weight:700;
+      transition: all .18s;
+    }
+    .pdf-card .pdf-meta .cta:hover {
+      background:#d4af37; color:#000; box-shadow: 0 10px 30px rgba(212,175,55,0.18);
+    }
+
+    /* Gallery */
+    .gallery { display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:0.6rem; margin-top:1rem; }
+    .gallery img { width:100%; height:160px; object-fit:cover; border-radius:8px; border:1px solid rgba(255,255,255,0.03); transition: transform .22s, box-shadow .22s; }
+    .gallery img:hover { transform: scale(1.03); box-shadow: 0 14px 40px rgba(212,175,55,0.12); }
+
+    /* Testimonials */
+    .testimonials { display:flex; flex-direction:column; gap:0.8rem; align-items:center; margin-top:1rem; }
+    .testimonial { max-width:900px; background: rgba(255,255,255,0.02); padding:0.9rem 1rem; border-radius:10px; border-left:4px solid rgba(212,175,55,0.18); font-size:0.98rem; }
+
+    /* Contact */
+    .contact form { display:flex; flex-direction:column; gap:0.8rem; max-width:520px; margin: 0 auto; }
+    .contact input, .contact textarea {
+      padding: 10px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.04); background: rgba(255,255,255,0.02); color:#f5f5f5;
+      transition: box-shadow .18s, border-color .18s;
+      font-size:0.95rem;
+    }
+    .contact input:focus, .contact textarea:focus {
+      outline: none; border-color: rgba(212,175,55,0.28); box-shadow: 0 8px 30px rgba(212,175,55,0.08);
+    }
+    .contact button {
+      padding: 12px 16px; border-radius:8px; border:none; background:#d4af37; color:#000; font-weight:700; cursor:pointer;
+      transition: transform .18s, box-shadow .18s;
+    }
+    .contact button:hover { transform: translateY(-4px); box-shadow: 0 18px 50px rgba(212,175,55,0.12); }
+
+    footer { padding: 1.6rem 1rem; text-align:center; color: rgba(212,175,55,0.9); border-top: 1px solid rgba(212,175,55,0.06); margin-top: 2rem; font-size:0.95rem; }
+
+    /* ---------- Responsive specifics ---------- */
+    @media (max-width: 720px) {
+      header { padding: 0.8rem 1rem; }
+      nav ul { display:none; }
+      .hamburger { display:flex; }
+      .mobile-nav { display:flex; }
+      .mobile-nav.hidden { display:none; }
+      .hero { padding: 6rem 1rem 3rem; }
+      .pdf-card { padding: 0.8rem; gap: 0.8rem; }
+      .gallery img { height:120px; }
+      .menu-grid { gap: 0.8rem; }
+      .menu-item { padding: 0.9rem; }
+    }
+
+    /* Respect reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .bg-image { background-attachment: scroll !important; }
+      canvas#particles { display:none; }
+      * { transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Moving background layers (coffee-related) -->
+  <div class="bg-wrap" aria-hidden="true">
+    <div class="bg-image" id="bgImage" role="img" aria-label="Coffee background image"></div>
+    <div class="steam-overlay" aria-hidden="true"></div>
+    <canvas id="particles" aria-hidden="true"></canvas>
+  </div>
+
+  <!-- Page content -->
+  <div class="page">
+    <header>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="logo">Ember & Oak</div>
+      </div>
+
+      <nav aria-label="Primary">
+        <ul>
+          <li><a href="#home">Home</a></li>
+          <li><a href="#menu">Menu</a></li>
+          <li><a href="#story">Our Story</a></li>
+          <li><a href="#space">The Space</a></li>
+          <li><a href="#gallery">Gallery</a></li>
+          <li><a href="#visit">Visit</a></li>
+        </ul>
+      </nav>
+
+      <div style="display:flex;align-items:center;gap:8px;">
+        <a class="cta-btn" href="#visit">Visit the Café</a>
+        <button class="hamburger" id="hamburger" aria-label="Open menu" aria-expanded="false" aria-controls="mobileNav">
+          <span></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Mobile nav overlay -->
+    <div id="mobileNav" class="mobile-nav hidden" role="dialog" aria-modal="true" aria-hidden="true">
+      <a href="#home" class="mobile-link">Home</a>
+      <a href="#menu" class="mobile-link">Menu</a>
+      <a href="#story" class="mobile-link">Our Story</a>
+      <a href="#space" class="mobile-link">The Space</a>
+      <a href="#gallery" class="mobile-link">Gallery</a>
+      <a href="#visit" class="mobile-link">Visit</a>
+      <a href="#visit" class="cta-btn" style="margin-top:8px;">Visit the Café</a>
+    </div>
+
+    <main>
+      <section id="home" class="hero" aria-labelledby="hero-heading">
+        <h1 id="hero-heading">Where time slows, and coffee remembers your name.</h1>
+        <p>Slow Coffee. Warm Souls. A place for conversation, focus, and quiet joy.</p>
+        <div class="actions">
+          <a class="btn-primary" href="#visit">Visit the Café</a>
+          <a class="btn-secondary" href="#menu">View the Menu</a>
+        </div>
+      </section>
+
+      <section id="menu" aria-labelledby="menu-heading">
+        <h2 id="menu-heading">Our Menu</h2>
+        <div class="menu-grid" role="list">
+          <article class="menu-item" role="listitem"><h3>The Driftwood Latte</h3><p>Smoked caramel, sea salt, velvety foam. Origin: coastal blend.</p></article>
+          <article class="menu-item" role="listitem"><h3>Coastal Pour Over</h3><p>Single-origin Ethiopian. Bright citrus, honeyed finish.</p></article>
+          <article class="menu-item" role="listitem"><h3>Oak Ember Mocha</h3><p>Dark chocolate, oak-smoked espresso. Deep and warming.</p></article>
+          <article class="menu-item" role="listitem"><h3>Espresso Classics</h3><p>Americano, Cappuccino, Flat White — precise, balanced, timeless.</p></article>
+          <article class="menu-item" role="listitem"><h3>Seasonal Specials</h3><p>Rotating creations inspired by the ocean and the season.</p></article>
+          <article class="menu-item" role="listitem"><h3>Fresh Pastries</h3><p>Locally baked croissants, rustic breads, and daily small-batch treats.</p></article>
+        </div>
+
+        <div class="pdf-card" role="region" aria-label="Download full menu">
+          <div class="pdf-icon" aria-hidden="true">PDF</div>
+          <div class="pdf-meta">
+            <p><strong>Full Menu</strong> — curated offerings, tasting notes, and seasonal pairings.</p>
+            <a class="cta" href="menu.pdf" target="_blank" rel="noopener">Download Full Menu (PDF)</a>
+          </div>
+        </div>
+      </section>
+
+      <section id="story" class="story" aria-labelledby="story-heading">
+        <h2 id="story-heading">Our Story</h2>
+        <p>Ember & Oak was born from late nights, ocean air, and scratched notebooks. We believe coffee should slow you down — not rush you through life. Every cup is intentionally crafted, ethically sourced, and served in a space designed for conversation, focus, and calm.</p>
+      </section>
+
+      <section id="space" class="space" aria-labelledby="space-heading">
+        <h2 id="space-heading">The Space</h2>
+        <p>Wood, concrete, plants, and light. Music that hums softly. A place for studying, working, or simply breathing. Ember & Oak is more than a café — it’s a living room for the city.</p>
+      </section>
+
+      <section id="gallery" class="gallery" aria-labelledby="gallery-heading">
+        <h2 id="gallery-heading">Gallery</h2>
+        <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=1200&auto=format&fit=crop&ixlib=rb-4.0.3&s=0f6b2f9b2b9b6b8f9a1b2c3d4e5f6a7b" alt="Close-up of a latte with crema">
+        <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?q=80&w=1200&auto=format&fit=crop&ixlib=rb-4.0.3&s=3a2b4c5d6e7f8a9b0c1d2e3f4a5b6c7d" alt="Hands holding a ceramic cup">
+        <img src="https://images.unsplash.com/photo-1526318472351-c75fcf070f85?q=80&w=1200&auto=format&fit=crop&ixlib=rb-4.0.3&s=9b8a7c6d5e4f3a2b1c0d9e8f7a6b5c4d" alt="Interior with wood tables and plants">
+      </section>
+
+      <section id="testimonials" class="testimonials" aria-labelledby="testimonials-heading">
+        <h2 id="testimonials-heading">What People Say</h2>
+        <div class="testimonial">“It feels less like a café, more like a second home.”</div>
+        <div class="testimonial">“The kind of place you lose track of time — in the best way.”</div>
+        <div class="testimonial">“Impeccable coffee, thoughtful space, and warm service.”</div>
+      </section>
+
+      <section id="visit" class="contact" aria-labelledby="visit-heading">
+        <h2 id="visit-heading">Visit Us</h2>
+        <p style="text-align:center; margin-bottom:0.8rem;">123 Coastal Road, Durban — Open 7am – 7pm</p>
+        <form aria-label="Contact form">
+          <input name="name" type="text" placeholder="Your name" required />
+          <input name="email" type="email" placeholder="Email address" required />
+          <textarea name="message" rows="4" placeholder="Say hello..." required></textarea>
+          <button type="submit">Send</button>
+        </form>
+      </section>
+
+      <footer>
+        <p>&copy; <span id="year"></span> Ember & Oak Coffee Co. — Slow Coffee. Warm Souls.</p>
+      </footer>
+    </main>
+  </div>
+
+  <!-- ---------- Coffee-particle + parallax script (mobile-optimized) ---------- -->
+  <script>
+    (function () {
+      // set year
+      document.getElementById('year').textContent = new Date().getFullYear();
+
+      // Mobile nav toggle
+      const hamburger = document.getElementById('hamburger');
+      const mobileNav = document.getElementById('mobileNav');
+      function toggleMobileNav(open) {
+        const isOpen = typeof open === 'boolean' ? open : mobileNav.classList.contains('hidden');
+        if (isOpen) {
+          mobileNav.classList.remove('hidden');
+          mobileNav.setAttribute('aria-hidden', 'false');
+          hamburger.setAttribute('aria-expanded', 'true');
+        } else {
+          mobileNav.classList.add('hidden');
+          mobileNav.setAttribute('aria-hidden', 'true');
+          hamburger.setAttribute('aria-expanded', 'false');
+        }
+      }
+      hamburger.addEventListener('click', () => toggleMobileNav(true));
+      mobileNav.addEventListener('click', (e) => {
+        if (e.target === mobileNav || e.target.classList.contains('mobile-link')) toggleMobileNav(false);
+      });
+
+      // Parallax background subtle movement on scroll & touch
+      const bg = document.getElementById('bgImage');
+      let lastScroll = 0;
+      window.addEventListener('scroll', () => {
+        const sc = window.scrollY;
+        const y = Math.min(sc * 0.06, 60);
+        bg.style.transform = `translateY(${y}px) scale(1.02)`;
+        lastScroll = sc;
+      }, { passive: true });
+
+      // mouse/touch parallax tilt (subtle) - on mobile use deviceorientation if available
+      let supportsDeviceOrientation = false;
+      window.addEventListener('deviceorientation', (ev) => {
+        supportsDeviceOrientation = true;
+        const tiltX = ev.gamma || 0; // left-right
+        const tiltY = ev.beta || 0;  // front-back
+        const tx = Math.max(-12, Math.min(12, tiltX));
+        const ty = Math.max(-12, Math.min(12, tiltY));
+        bg.style.transform = `translateY(${Math.min(window.scrollY * 0.06, 60) + ty * 0.6}px) scale(1.02)`;
+      }, { passive: true });
+
+      if (!supportsDeviceOrientation) {
+        window.addEventListener('mousemove', (e) => {
+          const w = window.innerWidth;
+          const h = window.innerHeight;
+          const mouseX = (e.clientX - w/2) / (w/2);
+          const mouseY = (e.clientY - h/2) / (h/2);
+          bg.style.transform = `translateY(${Math.min(window.scrollY * 0.06, 60) + mouseY * 8}px) scale(${1 + Math.abs(mouseX)*0.01})`;
+        }, { passive: true });
+      }
+
+      // Canvas particles: drifting coffee beans + steam specks (reduced on mobile)
+      const canvas = document.getElementById('particles');
+      const ctx = canvas.getContext('2d');
+      let DPR = Math.max(1, window.devicePixelRatio || 1);
+
+      function resizeCanvas() {
+        DPR = Math.max(1, window.devicePixelRatio || 1);
+        canvas.width = Math.floor(window.innerWidth * DPR);
+        canvas.height = Math.floor(window.innerHeight * DPR);
+        canvas.style.width = window.innerWidth + 'px';
+        canvas.style.height = window.innerHeight + 'px';
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      }
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      // Respect reduced motion
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+      if (reduce && reduce.matches) {
+        canvas.style.display = 'none';
+      }
+
+      // Determine particle count based on screen size
+      function particleCountForWidth(w) {
+        if (w < 420) return Math.round(Math.max(10, w / 60)); // phones
+        if (w < 720) return Math.round(Math.max(16, w / 55)); // phablets
+        return Math.round(Math.max(22, w / 60)); // desktop
+      }
+
+      let particles = [];
+      function rand(min, max) { return Math.random() * (max - min) + min; }
+
+      function createBean(i) {
+        return {
+          id: i,
+          type: 'bean',
+          x: rand(0, window.innerWidth),
+          y: rand(window.innerHeight * 0.2, window.innerHeight + 60),
+          w: rand(5, 12),
+          h: rand(9, 20),
+          angle: rand(0, Math.PI * 2),
+          speedX: rand(-0.2, 0.2),
+          speedY: rand(-0.05, -0.5),
+          alpha: rand(0.6, 1),
+          life: rand(10, 28),
+          ttl: 0,
+          color: ['rgba(84,50,20,0.95)','rgba(112,66,20,0.9)','rgba(160,110,60,0.85)'][Math.floor(rand(0,3))]
+        };
+      }
+
+      function createSteam(i) {
+        return {
+          id: i,
+          type: 'steam',
+          x: rand(0, window.innerWidth),
+          y: rand(window.innerHeight * 0.6, window.innerHeight + 80),
+          size: rand(2, 6),
+          speedX: rand(-0.05, 0.05),
+          speedY: rand(-0.15, -0.6),
+          alpha: rand(0.02, 0.12),
+          life: rand(6, 18),
+          ttl: 0,
+          color: ['rgba(255,255,255,0.06)','rgba(255,255,255,0.04)'][Math.floor(rand(0,2))]
+        };
+      }
+
+      function initParticles() {
+        particles = [];
+        const COUNT = particleCountForWidth(window.innerWidth);
+        for (let i = 0; i < COUNT; i++) {
+          if (Math.random() > 0.6) particles.push(createSteam(i));
+          else particles.push(createBean(i));
+        }
+      }
+      initParticles();
+
+      let last = performance.now();
+      function drawBean(p) {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.angle);
+        ctx.beginPath();
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, p.alpha * (1 - p.ttl / p.life));
+        ctx.ellipse(0, 0, p.w, p.h, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(255,255,255,0.06)';
+        ctx.ellipse(-p.w*0.25, -p.h*0.25, p.w*0.35, p.h*0.35, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawSteam(p) {
+        ctx.beginPath();
+        const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 8);
+        grd.addColorStop(0, p.color.replace(')', `,${Math.max(0.02, p.alpha)})`));
+        grd.addColorStop(0.6, p.color.replace(')', `,${Math.max(0.01, p.alpha * 0.35)})`));
+        grd.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grd;
+        ctx.globalAlpha = Math.max(0, p.alpha * (1 - p.ttl / p.life));
+        ctx.fillRect(p.x - p.size*8, p.y - p.size*8, p.size*16, p.size*16);
+      }
+
+      function animate(now) {
+        const dt = (now - last) / 1000;
+        last = now;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        for (let p of particles) {
+          p.ttl += dt;
+          p.x += p.speedX * (40 * dt);
+          p.y += p.speedY * (40 * dt) - (Math.sin((p.ttl + p.id) * 0.6) * 0.2);
+
+          if (p.type === 'bean') {
+            p.angle += 0.002 * (p.speedX || 0.1);
+            drawBean(p);
+          } else {
+            drawSteam(p);
+          }
+
+          if (p.ttl > p.life || p.y < -80 || p.x < -120 || p.x > window.innerWidth + 120) {
+            if (p.type === 'bean') Object.assign(p, createBean(p.id));
+            else Object.assign(p, createSteam(p.id));
+            p.y = window.innerHeight + rand(10, 160);
+            p.ttl = 0;
+          }
+        }
+
+        ctx.globalAlpha = 1;
+        requestAnimationFrame(animate);
+      }
+
+      // Start/stop logic for mobile performance
+      let animRunning = false;
+      function startAnimation() {
+        if (reduce && reduce.matches) return;
+        if (animRunning) return;
+        resizeCanvas();
+        last = performance.now();
+        animRunning = true;
+        requestAnimationFrame(animate);
+      }
+      function stopAnimation() {
+        animRunning = false;
+        // we don't explicitly cancel requestAnimationFrame here; animation checks animRunning implicitly by not being restarted
+      }
+
+      // Resize handling
+      function handleResize() {
+        resizeCanvas();
+        initParticles();
+      }
+      window.addEventListener('resize', handleResize);
+
+      // Pause animation on small devices to save battery; allow on modern phones but reduce particle count
+      function shouldRunParticles() {
+        const w = window.innerWidth;
+        // run on phones but with fewer particles; if very small or low memory, hide
+        if (w < 360) return false;
+        return true;
+      }
+
+      if (shouldRunParticles()) startAnimation();
+
+      // Pause when tab hidden
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) stopAnimation();
+        else startAnimation();
+      });
+
+      // Gentle entrance animations for content (only if not reduced motion)
+      if (!(reduce && reduce.matches)) {
+        document.querySelectorAll('section, header, .hero').forEach((el, i) => {
+          el.style.opacity = 0;
+          el.style.transform = 'translateY(8px)';
+          setTimeout(() => {
+            el.style.transition = 'opacity .7s ease, transform .7s cubic-bezier(.2,.9,.2,1)';
+            el.style.opacity = 1;
+            el.style.transform = 'translateY(0)';
+          }, 180 + i * 90);
+        });
+      }
+
+      // Accessibility: close mobile nav with Escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          mobileNav.classList.add('hidden');
+          mobileNav.setAttribute('aria-hidden', 'true');
+          hamburger.setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      // Close mobile nav when resizing to desktop
+      window.addEventListener('orientationchange', () => {
+        mobileNav.classList.add('hidden');
+        mobileNav.setAttribute('aria-hidden', 'true');
+        hamburger.setAttribute('aria-expanded', 'false');
+      });
+
+    })();
+  </script>
+</body>
+</html>
+```
